@@ -8,7 +8,7 @@ See README.md for what the game is and the file map. This file covers the things
 - To check the shape data without a browser: `node -e "import('./js/polyhedra.js').then(m=>m.selfTest())"`.
 
 ## Coordinates and the pixel filter
-- Everything visual is drawn in low-res "fat pixel" units. `computeLayout()` in `js/main.js` builds the shared layout object `L` (`PX`, `W`, `H`, `stage`, `quiver`, `ledger`, `narr`). `PX` changes with window size and browser zoom, from 1 up to 6 or more.
+- Everything visual is drawn in low-res "fat pixel" units. `computeLayout()` in `js/main.js` builds the shared layout object `L` (`PX`, `W`, `H`, `stage`, `hands`, `quiver`, `ledger`, `narr`). `stage.r` sets the shape size and `hands.r` sets the hand size, independently. `PX` changes with window size and browser zoom, from 1 up to 6 or more.
 - The pixelation works only because things are drawn on the canvases. Anything added as DOM will be crisp. Buttons are the only DOM on purpose, and they're placed by multiplying `L` values by `PX` (`ui.layout` / `ui.placeFormula` in main.js).
 - Canvas text must be ASCII. Press Start 2P has no `−`, `—`, `▶` or `χ`, and those fall back to a smooth font.
 - The backdrop (gradient, hands, dither) is drawn only on resize, not every frame. Animating the hands would need a per-frame redraw.

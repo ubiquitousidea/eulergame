@@ -25,11 +25,12 @@ export function drawBackdrop(canvas, L) {
   hands.width = L.W;
   hands.height = L.H;
   const h = hands.getContext('2d');
+  const H = L.hands;
   for (const side of [-1, 1]) {
     h.save();
-    h.translate(sx, sy);
-    h.scale(r * side, r);
-    drawHand(h, r);
+    h.translate(H.x, H.y);
+    h.scale(H.r * side, H.r);
+    drawHand(h, H.r);
     h.restore();
   }
   h.globalCompositeOperation = 'source-atop';
@@ -40,7 +41,7 @@ export function drawBackdrop(canvas, L) {
   h.fillRect(0, 0, L.W, L.H);
   h.fillStyle = 'rgba(20,10,30,0.2)'; // shadow of the floating shape on the palms
   h.beginPath();
-  h.ellipse(sx, sy + r * 1.3, r * 0.45, r * 0.07, 0, 0, Math.PI * 2);
+  h.ellipse(H.x, H.y + H.r * 1.3, H.r * 0.45, H.r * 0.07, 0, 0, Math.PI * 2);
   h.fill();
   ctx.drawImage(hands, 0, 0);
 

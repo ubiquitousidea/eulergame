@@ -19,10 +19,14 @@ function computeLayout() {
   const narr = { x: 8, y: H - 64, w: W - 16, h: 56 };
   const quiver = { x: 8, y: 28, w: 78, h: narr.y - 46 };
   const ledger = { x: W - 168, y: 8, w: 160 };
-  const left = quiver.x + quiver.w, right = ledger.x, top = 26, bottom = narr.y - 18;
-  const r = Math.max(20, Math.min((bottom - top) / 2.9, (right - left) / 2.4));
-  const stageBox = { x: Math.round((left + right) / 2), y: Math.round(top + r * 1.08), r };
-  return { PX, W, H, narr, quiver, ledger, stage: stageBox };
+  const left = quiver.x + quiver.w, right = ledger.x, top = 30;
+  // The shape fills the column. The hands are drawn behind it, so it can
+  // overlap the palms as if resting in them; the arms run behind the narration.
+  const r = Math.max(20, Math.min((narr.y - top) / 2.5, (right - left) / 2.3));
+  const stageBox = { x: Math.round((left + right) / 2), y: Math.round(top + r * 1.02), r };
+  const hr = r * 0.8;
+  const hands = { x: stageBox.x, y: stageBox.y + r * 0.8 - hr * 0.94, r: hr };
+  return { PX, W, H, narr, quiver, ledger, stage: stageBox, hands };
 }
 
 const ui = {

@@ -97,6 +97,7 @@ export class Game {
 
   startPhase(type, prefix = '') {
     this.state = type;
+    this.stage.compact = false;
     this.stage.setPhase(type);
     this.hud.say(prefix + PHASE_TEXT[type]);
     this.ui.setButtons([
@@ -138,6 +139,7 @@ export class Game {
 
   startPredict() {
     this.state = 'predict';
+    this.stage.compact = true; // room for the prediction above the shape
     this.stage.setPhase(null);
     this.prediction = 10;
     const V = this.shape.verts.length, E = this.shape.edges.length;
