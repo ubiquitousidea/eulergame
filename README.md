@@ -1,4 +1,4 @@
-# Euler's Quiver
+# Euler's Expedition
 
 A small browser adventure about counting the pieces of polyhedra until a pattern appears:
 
@@ -16,7 +16,7 @@ Three.js and the Press Start 2P font load from CDNs, so you need a network conne
 
 ## How it plays
 
-- **Count by collecting.** Each solid is counted in three passes: vertices, then edges, then faces. Clicking a piece shoots it into the matching quiver. Pieces you've counted glow, and you can't count one twice. Drag to rotate, because hidden pieces count too.
+- **Count by clicking.** Each solid is counted in three passes: vertices, then edges, then faces. Each type has its own hue (cyan vertices, gold edges, pink faces), and clicking a piece lights it up and adds one to the count panel. You can't count a piece twice. Drag to rotate, because hidden pieces count too.
 - **Hunt for the rule.** Each solid adds a row to the ledger. The sign buttons (`±V ±E ±F`) recompute the `=` column for every row at once. Once you have three or more solids, the only combination that stays constant is `V − E + F` (or its negation). Finding it unlocks the later levels.
 - **Predict.** For the dodecahedron and icosahedron, you use your rule to predict F before counting the faces.
 - **Break it.** The bonus picture-frame solid gives `16 − 32 + 16 = 0`. The formula is about solids without holes. In general, V − E + F is the *Euler characteristic*, `2 − 2g` for a surface with `g` holes.
@@ -30,12 +30,12 @@ Euler described the relation in a 1750 letter to Goldbach. Legendre gave the fir
 | File | Role |
 |---|---|
 | `js/polyhedra.js` | Shape data; a convex-hull face finder recovers true polygon faces from vertex lists; edges come from face loops; `selfTest()` checks every count |
-| `js/scene.js` | Three.js stage: shaded faces, pickable vertices/edges/faces, drag-to-rotate with inertia, click picking with occlusion |
-| `js/backdrop.js` | Radial-gradient backdrop and the two cupped hands, ordered-dithered |
-| `js/hud.js` | Quivers, ledger, narration, and arrow animations, drawn on a canvas |
+| `js/scene.js` | Three.js stage: shaded faces, pickable vertices/edges/faces with per-type hues that light up when counted, drag-to-rotate with inertia, click picking with occlusion |
+| `js/backdrop.js` | Radial-gradient backdrop, ordered-dithered |
+| `js/hud.js` | Count panel, ledger, narration, and pop-up feedback, drawn on a canvas |
 | `js/game.js` | State machine, narration, formula discovery, predictions |
 | `js/main.js` | Layout, DOM buttons, render loop |
 
-**Lo-fi filter:** every canvas renders at `1/PX` of the viewport and is scaled up with `image-rendering: pixelated`, so the backdrop, hands, 3D scene and HUD share one pixel grid. Only the DOM buttons render at full resolution.
+**Lo-fi filter:** every canvas renders at `1/PX` of the viewport and is scaled up with `image-rendering: pixelated`, so the backdrop, 3D scene and HUD share one pixel grid. Only the DOM buttons render at full resolution.
 
 Run `__eulerSelfTest()` in the browser console to verify the V/E/F counts for every shape.

@@ -8,9 +8,9 @@ const SHAPE_KEY = { vertices: 'verts', edges: 'edges', faces: 'faces' };
 const GATE_LEVEL = 4; // the octahedron: the rule must be found before predicting
 
 const INTRO = [
-  'Welcome, collector. The shapes resting in your hands are POLYHEDRA: solids made of flat faces.',
+  'Welcome, explorer. The shapes you will meet on this expedition are POLYHEDRA: solids made of flat faces.',
   'Each one has VERTICES (corners), EDGES (where two faces meet), and FACES (the flat sides).',
-  'Click each piece to shoot it into your quiver. Drag to turn the solid, because hidden pieces count too!',
+  'Click each piece to count it, and it lights up. Drag to turn the solid, because hidden pieces count too!',
   'Count carefully. Somewhere in these numbers hides a secret Leonhard Euler found in 1750.',
 ];
 
@@ -117,7 +117,7 @@ export class Game {
     }
     this.collected[type].add(id);
     this.stage.markCollected(type, id);
-    this.hud.fly(type, pos);
+    this.hud.counted(type, pos);
     sfx.collect(type, this.collected[type].size);
   }
 
@@ -255,7 +255,7 @@ export class Game {
       `${V} - ${E} + ${F} = ${V - E + F}. NOT 2! Did the rule break?`,
       "Euler's rule is for solids WITHOUT holes, ones you could inflate like a balloon into a ball. This frame has a tunnel through it, so it can't become a ball.",
       'So V - E + F measures something deeper than counting. It is called the EULER CHARACTERISTIC: 2 for a ball, 0 with one hole, -2 with two holes. Each hole subtracts 2.',
-      'It ignores size, angles and face shapes. Only holes matter. That idea helped launch a whole new field: TOPOLOGY. Thanks for playing, collector!',
+      'It ignores size, angles and face shapes. Only holes matter. That idea helped launch a whole new field: TOPOLOGY. Thanks for playing, explorer!',
     ], [{ label: 'Play again', onClick: () => this.start() }], (page) => (this.showTitle = page >= 2));
   }
 }

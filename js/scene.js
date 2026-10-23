@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 
-export const TYPE_COLORS = {
-  vertices: new THREE.Color('#6fe3ff'),
-  edges: new THREE.Color('#ffd34d'),
-  faces: new THREE.Color('#ff6fae'),
+// One hue per type, in three steps: resting, waiting to be counted (the active
+// phase), and lit once counted.
+const HUES = {
+  vertices: { base: '#5d7480', idle: '#90aab4', lit: '#6fe3ff' },
+  edges: { base: '#3a2c14', idle: '#a08a58', lit: '#ffd34d' },
+  faces: { base: '#a85f7e', idle: '#c27c99', lit: '#ff6fae' },
 };
+for (const h of Object.values(HUES)) for (const k in h) h[k] = new THREE.Color(h[k]);
 const TYPES = ['vertices', 'edges', 'faces'];
 const CLICK_SLOP = 6; // CSS px of movement before a press becomes a drag
 const X_AXIS = new THREE.Vector3(1, 0, 0);
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
 const VERTEX_R = 0.065, EDGE_R = 0.03;
+const _tmp = new THREE.Color();
 
 // Invisible but raycastable: generous hit targets for tiny vertices and edges.
 const PROXY_MAT = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
@@ -33,9 +37,7 @@ export class Stage {
     key.position.set(3, 4, 5);
     const rim = new THREE.DirectionalLight(0x88aaff, 1.2);
     rim.position.set(-4, 1, -3);
-    const under = new THREE.DirectionalLight(0xffb070, 0.8); // warm bounce from the hands
-    under.position.set(0, -5, 2);
-    this.scene.add(key, rim, under);
+    this.scene.add(key, rim);
 
     this.ray = new THREE.Raycaster();
     this.items = { vertices: [], edges: [], faces: [] };
@@ -83,7 +85,6 @@ export class Stage {
     this.items = { vertices: [], edges: [], faces: [] };
     this.hovered = null;
     const V = shape.verts.map((p) => new THREE.Vector3(...p));
-    this.baseColor = new THREE.Color(shape.color);
 
     shape.faces.forEach((loop, id) => {
       const pos = [];
@@ -94,14 +95,14 @@ export class Stage {
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.computeVertexNormals();
       const mat = new THREE.MeshStandardMaterial({
-        color: this.baseColor, flatShading: true, roughness: 0.55, metalness: 0.05,
+        color: HUES.faces.base, flatShading: true, roughness: 0.55, metalness: 0.05,
         side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.userData = { type: 'faces', id };
       this.spin.add(mesh);
       const center = loop.reduce((acc, i) => acc.add(V[i]), new THREE.Vector3()).divideScalar(loop.length);
-      this.items.faces.push({ id, mesh, proxy: mesh, center, collected: false });
+      this.items.faces.push({ id, mesh, proxy: mesh, center, collected: false, flash: 0 });
     });
 
     shape.edges.forEach(([a, b], id) => {
@@ -111,7 +112,7 @@ export class Stage {
       const quat = new THREE.Quaternion().setFromUnitVectors(Y_AXIS, dir.normalize());
       const mesh = new THREE.Mesh(
         new THREE.CylinderGeometry(EDGE_R, EDGE_R, len, 6, 1),
-        new THREE.MeshStandardMaterial({ color: 0x191c30, roughness: 0.4 }),
+        new THREE.MeshStandardMaterial({ color: HUES.edges.base, roughness: 0.4 }),
       );
       const proxy = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, len * 0.9, 6, 1), PROXY_MAT);
       for (const m of [mesh, proxy]) {
@@ -120,20 +121,20 @@ export class Stage {
         this.spin.add(m);
       }
       proxy.userData = { type: 'edges', id };
-      this.items.edges.push({ id, mesh, proxy, center: mid, collected: false });
+      this.items.edges.push({ id, mesh, proxy, center: mid, collected: false, flash: 0 });
     });
 
     V.forEach((p, id) => {
       const mesh = new THREE.Mesh(
         new THREE.IcosahedronGeometry(VERTEX_R, 1),
-        new THREE.MeshStandardMaterial({ color: 0xc9cde6, roughness: 0.3 }),
+        new THREE.MeshStandardMaterial({ color: HUES.vertices.base, roughness: 0.3 }),
       );
       const proxy = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 1), PROXY_MAT);
       mesh.position.copy(p);
       proxy.position.copy(p);
       proxy.userData = { type: 'vertices', id };
       this.spin.add(mesh, proxy);
-      this.items.vertices.push({ id, mesh, proxy, center: p.clone(), collected: false });
+      this.items.vertices.push({ id, mesh, proxy, center: p.clone(), collected: false, flash: 0 });
     });
 
     this.setPhase(null);
@@ -159,14 +160,16 @@ export class Stage {
   }
 
   markCollected(type, id) {
-    this.items[type][id].collected = true;
+    const it = this.items[type][id];
+    it.collected = true;
+    it.flash = 1; // brief overshoot so the pick visibly switches on
   }
 
   pulse() {
     this.pulseUntil = this.time + 1.8;
   }
 
-  // Low-res screen position of an element, for the arrow-into-quiver animation.
+  // Low-res screen position of an element, for feedback drawn at the pick.
   project(type, id) {
     const v = this.items[type][id].center.clone();
     this.spin.localToWorld(v);
@@ -247,37 +250,33 @@ export class Stage {
         this.rotateBy(0.25, 0); // idle turntable when not counting
       }
     }
-    this.updateLook(t);
+    this.updateLook(t, dt);
   }
 
-  updateLook(t) {
+  updateLook(t, dt) {
     const pulse = t < this.pulseUntil ? 0.5 + 0.5 * Math.sin(t * 12) : 0;
     const hov = this.hovered;
     for (const type of TYPES) {
       const active = this.phase === type;
-      const tc = TYPE_COLORS[type];
+      const hue = HUES[type];
+      // Faces are large, so they glow less to keep their shading readable.
+      const glow = (type === 'faces' ? 0.4 : 0.85) * (active ? 1 : 0.5);
       for (const it of this.items[type]) {
         const mat = it.mesh.material;
         const isHover = hov && hov.type === type && hov.id === it.id;
+        it.flash = Math.max(0, it.flash - dt * 3);
         mat.emissive.setRGB(0, 0, 0);
-        if (type === 'faces') {
-          mat.color.copy(this.baseColor);
-          if (it.collected && active) {
-            mat.color.lerp(tc, 0.6);
-            mat.emissive.copy(tc).multiplyScalar(0.18);
-          }
-        } else if (it.collected) {
-          mat.color.copy(tc);
-          mat.emissive.copy(tc).multiplyScalar(active ? 0.55 : 0.25);
-        } else if (active) {
-          mat.color.set(0xf3f0ff);
+        if (it.collected) {
+          mat.color.copy(hue.lit);
+          mat.emissive.copy(hue.lit).multiplyScalar(glow + it.flash * 0.8);
         } else {
-          mat.color.set(type === 'edges' ? 0x191c30 : 0xc9cde6);
+          mat.color.copy(active ? hue.idle : hue.base);
+          if (active && pulse) mat.emissive.copy(hue.lit).multiplyScalar(pulse * 0.6);
         }
-        if (active && !it.collected && pulse) mat.emissive.add(new THREE.Color(0x3aa0ff).multiplyScalar(pulse));
-        if (isHover) mat.emissive.add(new THREE.Color(0x404040));
-        if (type === 'vertices') it.mesh.scale.setScalar(active ? 1.35 : 0.8);
-        if (type === 'edges') it.mesh.scale.set(active ? 1.5 : 1, 1, active ? 1.5 : 1);
+        if (isHover) mat.emissive.add(_tmp.copy(hue.lit).multiplyScalar(0.3));
+        const pop = 1 + it.flash * 0.4;
+        if (type === 'vertices') it.mesh.scale.setScalar((active ? 1.35 : 0.8) * pop);
+        if (type === 'edges') it.mesh.scale.set((active ? 1.5 : 1) * pop, 1, (active ? 1.5 : 1) * pop);
       }
     }
   }
