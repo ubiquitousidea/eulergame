@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LEVELS, EPILOGUE } from './polyhedra.js';
 import { HUES } from './scene.js';
+import { Tilt } from './tilt.js';
 
 // The walkable world: a dirt clearing ringed by forest under a blue sky, with
 // every polyhedron floating in a line. Rendered first-person on the scene grid
@@ -38,8 +39,9 @@ export class World {
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 400);
     this.camera.rotation.order = 'YXZ';
     this.ray = new THREE.Raycaster();
-    // Phones can't walk, so they may click any shape in view.
+    // Phones walk by tilting, if they can, and may tap any shape in view either way.
     this.touch = window.matchMedia('(pointer: coarse)').matches;
+    this.tilt = new Tilt();
     this.active = false; // walking and clicking shapes
     this.target = 0;
     this.epilogueShown = false;
@@ -126,8 +128,8 @@ export class World {
   // Back to the start: nothing counted, the frame hidden, the player at the start.
   reset() {
     if (this.touch) {
-      // Phones can't turn, so face halfway between the first and last shape to
-      // keep the whole line in view.
+      // Face halfway between the first and last shape to keep the whole line in
+      // view, since a phone may not be able to walk or turn.
       this.pos.set(END_VIEW.x, 0, END_VIEW.z);
       const ends = [0, SHAPES.length - 1].map((i) => this.models[i].model.position);
       this.yaw = ends.reduce((sum, p) => sum + this.yawTo(p), 0) / 2;
@@ -153,6 +155,7 @@ export class World {
     this.target = index;
     this.active = true;
     this.focusYaw = null;
+    this.tilt.recenter(); // however the phone is held now is standing still
     this.models.forEach((m, i) => (m.model.visible = i < LEVELS.length || this.epilogueShown));
     this.canvas.style.cursor = 'default';
   }
@@ -221,17 +224,21 @@ export class World {
 
   move(dt) {
     const k = this.keys;
-    const turn = (k.has('left') ? 1 : 0) - (k.has('right') ? 1 : 0);
-    const step = (k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0);
+    const tilt = this.tilt.read();
+    const clamp = (v) => Math.max(-1, Math.min(1, v));
+    const turn = clamp((k.has('left') ? 1 : 0) - (k.has('right') ? 1 : 0) + tilt.turn);
+    const step = clamp((k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0) + tilt.step);
     const side = (k.has('strafeR') ? 1 : 0) - (k.has('strafeL') ? 1 : 0);
     this.yaw += turn * TURN_SPEED * dt;
     if (!step && !side) return;
-    const d = (WALK_SPEED * dt) / Math.hypot(step, side);
+    // Keys give full speed (diagonals included); a gentle tilt gives less.
+    const len = Math.hypot(step, side), pace = Math.min(1, len);
+    const d = (WALK_SPEED * dt * pace) / len;
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     const p = this.pos;
     p.x += (-sin * step + cos * side) * d;
     p.z += (-cos * step - sin * side) * d;
-    this.walk += dt * 10;
+    this.walk += dt * 10 * pace;
     const r = Math.hypot(p.x, p.z);
     if (r > CLEARING) p.multiplyScalar(CLEARING / r);
     for (const { model } of this.models) {
