@@ -131,32 +131,32 @@ function frame(a = 1, b = 0.5, t = 0.32) {
 
 export const LEVELS = [
   makeShape({
-    id: 'tetra', name: 'Tetrahedron', short: 'TETRA', color: '#4fb3a9',
+    id: 'tetra', name: 'Tetrahedron', short: 'TETRA',
     verts: [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]],
-    blurb: 'Shape 1: the TETRAHEDRON. Four triangles make the simplest solid there is. Drag to turn it in your hands.',
+    blurb: 'Shape 1: the TETRAHEDRON. Four triangles make the simplest solid there is. Drag to turn it.',
   }),
   makeShape({
-    id: 'cube', name: 'Cube', short: 'CUBE', color: '#d9734e',
+    id: 'cube', name: 'Cube', short: 'CUBE',
     verts: signs3((a, b, c) => [a, b, c]),
     blurb: 'Shape 2: the CUBE. Some corners are always hiding behind it, so turn it around to find them all.',
   }),
   makeShape({
-    id: 'prism', name: 'Triangular Prism', short: 'PRISM', color: '#7b6fd6',
+    id: 'prism', name: 'Triangular Prism', short: 'PRISM',
     verts: prismVerts(3, 0.8),
     blurb: 'Shape 3: a TRIANGULAR PRISM. Two triangles are joined by three rectangles, like a tent.',
   }),
   makeShape({
-    id: 'pyramid', name: 'Square Pyramid', short: 'PYRMD', color: '#d6b04f',
+    id: 'pyramid', name: 'Square Pyramid', short: 'PYRMD',
     verts: [[1, -0.6, 1], [1, -0.6, -1], [-1, -0.6, -1], [-1, -0.6, 1], [0, 1, 0]],
     blurb: 'Shape 4: a SQUARE PYRAMID, like the ones at Giza. It has one square and four triangles.',
   }),
   makeShape({
-    id: 'octa', name: 'Octahedron', short: 'OCTA', color: '#4f8fd6',
+    id: 'octa', name: 'Octahedron', short: 'OCTA',
     verts: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
     blurb: 'Shape 5: the OCTAHEDRON. It is two pyramids glued base to base.',
   }),
   makeShape({
-    id: 'dodeca', name: 'Dodecahedron', short: 'DODECA', color: '#5fbf6a', predict: true,
+    id: 'dodeca', name: 'Dodecahedron', short: 'DODECA', predict: true,
     verts: [
       ...signs3((a, b, c) => [a, b, c]),
       ...[-1, 1].flatMap((a) => [-1, 1].map((b) => [0, a / PHI, b * PHI])),
@@ -166,18 +166,18 @@ export const LEVELS = [
     blurb: 'Shape 6: the DODECAHEDRON, built from pentagons. This time you will test your rule by PREDICTING before you count.',
   }),
   makeShape({
-    id: 'icosa', name: 'Icosahedron', short: 'ICOSA', color: '#c95f9a', predict: true,
+    id: 'icosa', name: 'Icosahedron', short: 'ICOSA', predict: true,
     verts: [
       ...[-1, 1].flatMap((a) => [-1, 1].map((b) => [0, a, b * PHI])),
       ...[-1, 1].flatMap((a) => [-1, 1].map((b) => [a, b * PHI, 0])),
       ...[-1, 1].flatMap((a) => [-1, 1].map((b) => [a * PHI, 0, b])),
     ],
-    blurb: 'Shape 7: the ICOSAHEDRON, made of twenty triangles. Count, predict, then check. Patience, collector!',
+    blurb: 'Shape 7: the ICOSAHEDRON, made of twenty triangles. Count, predict, then check. Patience, explorer!',
   }),
 ];
 
 export const EPILOGUE = makeShape({
-  id: 'frame', name: 'Picture Frame', short: 'FRAME', color: '#b0805a', sphere: false,
+  id: 'frame', name: 'Picture Frame', short: 'FRAME', sphere: false,
   ...frame(),
   blurb: 'Something strange: a PICTURE FRAME, a solid with a tunnel straight through it. Count it like the others.',
 });

@@ -67,3 +67,5 @@ canvas {
 .btn.ghost { background: #cfd6ff; }
 .btn.sign { background: #ffffff; min-width: 4.2em; }
 .btn.sign.neg { background: #ff9a9a; }
+#formula.narrow span { display: none; }
+#formula.narrow .btn.sign { flex: 1; min-width: 0; padding-inline: 0; white-space: nowrap; }
