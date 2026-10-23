@@ -18,8 +18,9 @@ Three.js and the Press Start 2P font load from CDNs, so you need a network conne
 
 ## How it plays
 
+- **Explore.** You stand in a dirt clearing ringed by forest, and the solids float in a line ahead of you. Walk with the arrow keys (or WASD): up and down move, left and right turn. Walk up to the solid under the gold arrow and click it to study it. On phones, which can't walk, any solid in view can be tapped.
 - **Count by clicking.** Each solid is counted in three passes: vertices, then edges, then faces. Each type has its own hue (cyan vertices, gold edges, pink faces), and clicking a piece lights it up and adds one to the count panel. You can't count a piece twice. Drag to rotate, because hidden pieces count too.
-- **Hunt for the rule.** Each solid adds a row to the ledger. The sign buttons (`±V ±E ±F`) recompute the `=` column for every row at once. Once you have three or more solids, the only combination that stays constant is `V − E + F` (or its negation). Finding it unlocks the later levels.
+- **Hunt for the rule.** Each solid adds a row to the ledger, and lights up in the world once counted. The sign buttons (`±V ±E ±F`) recompute the `=` column for every row at once. Once you have three or more solids, the only combination that stays constant is `V − E + F` (or its negation). Finding it unlocks the later levels.
 - **Guess first.** Before each count, you guess how many vertices, edges or faces there are, and the game tells you how close you were. For the dodecahedron and icosahedron, the face guess becomes a prediction made with your rule.
 - **Break it.** The bonus picture-frame solid gives `16 − 32 + 16 = 0`. The formula is about solids without holes. In general, V − E + F is the *Euler characteristic*, `2 − 2g` for a surface with `g` holes.
 
@@ -32,13 +33,13 @@ Euler described the relation in a 1750 letter to Goldbach. Legendre gave the fir
 | File | Role |
 |---|---|
 | `js/polyhedra.js` | Shape data; a convex-hull face finder recovers true polygon faces from vertex lists; edges come from face loops; `selfTest()` checks every count |
-| `js/scene.js` | Three.js stage: shaded faces, pickable vertices/edges/faces with per-type hues that light up when counted, drag-to-rotate with inertia, click picking with occlusion |
-| `js/backdrop.js` | Radial-gradient backdrop, ordered-dithered |
+| `js/world.js` | The walkable first-person world: sky, clouds, forest, dithered dirt ground, the line of floating solids, arrow-key movement, and clicking a solid to study it |
+| `js/scene.js` | Three.js counting stage, drawn over the dimmed world: shaded faces, pickable vertices/edges/faces with per-type hues that light up when counted, drag-to-rotate with inertia, click picking with occlusion |
 | `js/hud.js` | Count panel, ledger, narration, and pop-up feedback, drawn on a canvas |
 | `js/game.js` | State machine, narration, formula discovery, guesses and predictions |
 | `js/main.js` | Layout, DOM buttons, render loop |
-| `js/settings.js` | Pixel-size knobs: `SHAPE_RES` (chunkiness of the shape and backdrop) and `HUD_RES` |
+| `js/settings.js` | Pixel-size knobs: `SHAPE_RES` (chunkiness of the world and shape) and `HUD_RES` |
 
-**Lo-fi filter:** every canvas renders at low resolution and is scaled up with `image-rendering: pixelated`. The HUD uses the finest grid that still fits its text. The 3D scene and backdrop use a grid sized so the shape is always about `SHAPE_RES` pixels in radius, so a phone shows chunky pixels just like a big monitor. Only the DOM buttons render at full resolution.
+**Lo-fi filter:** every canvas renders at low resolution and is scaled up with `image-rendering: pixelated`. The HUD uses the finest grid that still fits its text. The 3D world and counting stage use a grid sized so the shape is always about `SHAPE_RES` pixels in radius, so a phone shows chunky pixels just like a big monitor. Only the DOM buttons render at full resolution.
 
 Run `__eulerSelfTest()` in the browser console to verify the V/E/F counts for every shape.

@@ -86,7 +86,7 @@ export class Hud {
     this.typed = Math.min(this.text.length, this.typed + dt * TYPE_SPEED);
 
     this.drawStatus(g);
-    if (g.state !== 'intro') this.drawCounts(g, dt);
+    if (g.state !== 'intro' && g.state !== 'explore') this.drawCounts(g, dt);
     if (g.ledger.length) this.drawLedger(g);
     this.drawStageText(g);
     this.drawToasts(dt);
@@ -110,6 +110,7 @@ export class Hud {
       col = TYPE_COL[g.guessType];
     } else if (g.state === 'tally') line = 'TALLY';
     else if (g.state === 'look') line = 'INSPECT';
+    else if (g.state === 'explore') line = 'EXPLORE';
     else if (g.state === 'reveal') line = 'DISCOVERY';
     this.txt(line, 8, 17, col);
   }

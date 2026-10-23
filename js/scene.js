@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 // One hue per type, in three steps: resting, waiting to be counted (the active
 // phase), and lit once counted.
-const HUES = {
+export const HUES = {
   vertices: { base: '#5d7480', idle: '#90aab4', lit: '#6fe3ff' },
   edges: { base: '#3a2c14', idle: '#a08a58', lit: '#ffd34d' },
   faces: { base: '#a85f7e', idle: '#c27c99', lit: '#ff6fae' },
@@ -24,6 +24,7 @@ export class Stage {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
     this.renderer.setPixelRatio(1);
     this.renderer.setClearColor(0x000000, 0);
+    this.renderer.autoClear = false; // the world draws first, then this on top
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -51,12 +52,23 @@ export class Stage {
     this.onPick = null;
     this.compact = false; // shrink and lower the shape to make room for a title
     this.compactAmt = 0;
+    this.visible = false; // shown (and clickable) only while studying a shape
+    this.appear = 0;
+
+    // Dims the world behind the shape.
+    this.dimScene = new THREE.Scene();
+    this.dimCam = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+    this.dim = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.MeshBasicMaterial({ color: 0x04050c, transparent: true, depthTest: false, depthWrite: false }),
+    );
+    this.dimScene.add(this.dim);
 
     canvas.addEventListener('pointerdown', (e) => this.down(e));
     canvas.addEventListener('pointermove', (e) => this.move(e));
     canvas.addEventListener('pointerup', (e) => this.up(e));
     canvas.addEventListener('pointercancel', () => (this.drag = null));
-    canvas.addEventListener('pointerleave', () => this.setHover(null));
+    canvas.addEventListener('pointerleave', () => this.visible && this.setHover(null));
   }
 
   // Renders on the scene grid (L.scene), but positions in and out of the stage
@@ -201,12 +213,14 @@ export class Stage {
   }
 
   down(e) {
+    if (!this.visible) return;
     this.canvas.setPointerCapture(e.pointerId);
     this.drag = { lastX: e.clientX, lastY: e.clientY, moved: 0, lastT: performance.now() };
     this.vel.set(0, 0);
   }
 
   move(e) {
+    if (!this.visible) return;
     if (!this.drag) {
       this.setHover(this.pickAt(e.clientX, e.clientY));
       return;
@@ -238,14 +252,17 @@ export class Stage {
 
   setHover(hit) {
     this.hovered = hit;
-    this.canvas.style.cursor = hit ? 'pointer' : this.drag ? 'grabbing' : 'grab';
+    if (this.visible) this.canvas.style.cursor = hit ? 'pointer' : this.drag ? 'grabbing' : 'grab';
   }
 
   update(dt) {
     this.time += dt;
     const t = this.time;
     this.compactAmt += ((this.compact ? 1 : 0) - this.compactAmt) * Math.min(1, dt * 4);
-    this.group.scale.setScalar(1 - 0.3 * this.compactAmt);
+    // Grows in when shown and shrinks away when hidden, over a quarter second.
+    this.appear = Math.max(0, Math.min(1, this.appear + (this.visible ? dt : -dt) * 4));
+    const pop = this.appear * this.appear * (3 - 2 * this.appear);
+    this.group.scale.setScalar((1 - 0.3 * this.compactAmt) * pop);
     this.group.position.y = Math.sin(t * 1.3) * 0.04 - 0.3 * this.compactAmt;
     if (!this.drag) {
       if (this.vel.lengthSq() > 0.0004) {
@@ -287,6 +304,10 @@ export class Stage {
   }
 
   render() {
+    if (!this.appear) return;
+    this.dim.material.opacity = 0.55 * this.appear;
+    this.renderer.clearDepth();
+    this.renderer.render(this.dimScene, this.dimCam);
     this.renderer.render(this.scene, this.camera);
   }
 }

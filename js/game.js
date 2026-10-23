@@ -11,7 +11,7 @@ const GATE_LEVEL = 4; // the octahedron: the rule must be found before predictin
 const INTRO = [
   'Welcome, explorer. The shapes you will meet on this expedition are POLYHEDRA: solids made of flat faces.',
   'Each one has VERTICES (corners), EDGES (where two faces meet), and FACES (the flat sides).',
-  'Click each piece to count it, and it lights up. Drag to turn the solid, because hidden pieces count too!',
+  'The shapes float in a line out in this clearing. Walk up to one and click it. Then click each piece to count it, and drag to turn the solid: hidden pieces count too!',
   'Count carefully. Somewhere in these numbers hides a secret Leonhard Euler found in 1750.',
 ];
 
@@ -36,12 +36,14 @@ const REVEAL = [
 ];
 
 export class Game {
-  constructor({ stage, hud, ui }) {
+  constructor({ stage, hud, ui, world }) {
     this.stage = stage;
     this.hud = hud;
     this.ui = ui;
+    this.world = world;
     this.total = LEVELS.length;
     stage.onPick = (type, id) => this.pick(type, id);
+    world.onPick = (index, far) => this.pickShape(index, far);
     ui.onSign = (i) => this.toggleSign(i);
   }
 
@@ -54,12 +56,13 @@ export class Game {
     this.guesses = {};
     this.state = 'intro';
     this.stage.compact = false;
+    this.stage.visible = false;
+    this.world.reset();
     this.shape = LEVELS[0];
     this.collected = { vertices: new Set(), edges: new Set(), faces: new Set() };
-    this.stage.loadShape(this.shape);
     this.hud.resetCounts();
     this.ui.setFormula({ visible: false, enabled: false, signs: this.signs, rows: 0 });
-    this.narrate(INTRO, [{ label: 'Begin >', onClick: () => this.beginShape(LEVELS[0], 0) }]);
+    this.narrate(INTRO, [{ label: 'Begin >', onClick: () => this.explore(0) }]);
   }
 
   // Show pages one at a time; the last page gets the final buttons.
@@ -82,6 +85,39 @@ export class Game {
     show();
   }
 
+  // Walk the world to find shape `index` (LEVELS.length is the bonus frame).
+  explore(index) {
+    this.state = 'explore';
+    this.levelIndex = index;
+    this.shape = index < LEVELS.length ? LEVELS[index] : EPILOGUE;
+    this.epilogue = this.shape === EPILOGUE;
+    this.stage.visible = false;
+    this.stage.setPhase(null);
+    this.world.explore(index);
+    this.ui.setFormula({ enabled: false });
+    const name = this.shape.name.toUpperCase();
+    const how = this.world.touch ? `Tap the ${name}` : `Walk with the ARROW KEYS to the ${name}, then click it`;
+    this.hud.say(this.epilogue
+      ? `A strange new shape has appeared at the far end of the line. ${how}!`
+      : `${how}. Look for the gold arrow.`);
+    this.ui.setButtons([]);
+  }
+
+  // A floating shape was clicked in the world. Only the target opens, and only up close.
+  pickShape(index, far = false) {
+    if (this.state !== 'explore') return;
+    const pos = this.world.project(index);
+    if (index !== this.levelIndex || far) {
+      const msg = index < this.levelIndex ? 'COUNTED!' : index > this.levelIndex ? `FIRST: ${this.shape.short}` : 'WALK CLOSER';
+      this.hud.toast(msg, pos, '#ff8a8a');
+      sfx.dud();
+      return;
+    }
+    sfx.success();
+    this.world.enter(index);
+    this.beginShape(this.shape, index);
+  }
+
   beginShape(shape, index) {
     this.shape = shape;
     this.levelIndex = index;
@@ -90,6 +126,7 @@ export class Game {
     this.collected = { vertices: new Set(), edges: new Set(), faces: new Set() };
     this.state = 'look';
     this.stage.compact = false;
+    this.stage.visible = true;
     this.stage.loadShape(shape);
     this.hud.resetCounts();
     this.ui.setFormula({ enabled: false });
@@ -181,6 +218,7 @@ export class Game {
       V: s.verts.length, E: s.edges.length, F: s.faces.length,
     });
     this.ui.setFormula({ rows: this.ledger.length });
+    this.world.markCounted(this.levelIndex);
     if (this.epilogue) return this.endGame();
     this.ui.setFormula({ visible: true, enabled: true, signs: this.signs, rows: this.ledger.length });
     this.showTally(this.checkDiscovery());
@@ -240,9 +278,9 @@ export class Game {
       });
     }
     buttons.push({
-      label: last ? 'The big reveal >' : 'Next polyhedron >',
+      label: last ? 'The big reveal >' : 'Keep exploring >',
       disabled: gated,
-      onClick: () => (last ? this.reveal() : this.beginShape(LEVELS[this.levelIndex + 1], this.levelIndex + 1)),
+      onClick: () => (last ? this.reveal() : this.explore(this.levelIndex + 1)),
     });
     this.hud.say(msg);
     this.ui.setButtons(buttons);
@@ -254,7 +292,13 @@ export class Game {
     this.signs = [1, -1, 1];
     this.ui.setFormula({ enabled: false, signs: this.signs });
     sfx.success();
-    this.narrate(REVEAL, [{ label: 'One more shape...', onClick: () => this.beginShape(EPILOGUE, LEVELS.length) }]);
+    this.narrate(REVEAL, [{
+      label: 'One more shape...',
+      onClick: () => {
+        this.world.showEpilogue();
+        this.explore(LEVELS.length);
+      },
+    }]);
   }
 
   endGame() {
