@@ -17,6 +17,7 @@ See README.md for what the game is and the file map. This file covers the things
 ## Game logic (js/game.js)
 - The states are `intro → look → vertices → edges → [predict] → faces → tally`, then repeat for the next shape, then `reveal`, then the torus, then `end`. The HUD reads `game.state` directly.
 - Every state change rebuilds the button bar with `ui.setButtons([...])`. Multi-page text goes through `narrate(pages, finalButtons, onPage)`.
+- The narration box holds 4 lines on wide screens and 5 on narrow ones (about 44 columns on a phone), and overflow is silently clipped. Keep each page within 5 lines at that width. Pages that combine messages, like the prediction result plus the discovery message in `showTally`, run longest.
 - The rule counts as discovered once the sign choices give the same result for at least 3 hole-free shapes. The torus row has `sphere: false` and is excluded. `GATE_LEVEL` (the octahedron) blocks progress until the rule is found.
 
 ## Picking and shapes (js/scene.js, js/polyhedra.js)
@@ -26,5 +27,6 @@ See README.md for what the game is and the file map. This file covers the things
 
 ## Browser testing
 - `window.__game` and `window.__eulerSelfTest()` are exposed. Fast-forward by calling `__game.pick(type, id)` for every id, then clicking `#btnbar` buttons, matched by their text.
+- After editing JS, the page may keep cached modules, even with a new `?v=` on the URL. Refresh them with `await fetch('/js/<file>.js', {cache: 'reload'})` for each changed file, then `location.reload()`. Or ask the user to hard-reload.
 - Screenshots are expensive: one session used about 430k tokens on them. Drive and check the game with `javascript_tool`, and take screenshots only for visual checks, using `scale: 0.5`.
 - With browser zoom, screenshot coordinates don't match CSS px. To find where to click, use `__game.stage.project(type, id)` (fat pixels) × `PX`, then scale by screenshot width ÷ `innerWidth`.
