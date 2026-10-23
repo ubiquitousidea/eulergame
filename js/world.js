@@ -11,7 +11,8 @@ const EYE = 1.6;
 const FLOAT_Y = 2.3;
 const SHAPE_SCALE = 1;
 const SPACING = 6;            // between shapes along the line (z axis)
-const START = { x: 6, z: 32 }; // looking down the line, so every shape is in view
+const SIDE_VIEW = 26;         // keyboard start: this far from the line, facing it square on
+const END_VIEW = { x: 6, z: 32 }; // touch start: looking down the line, so every shape fits a portrait phone
 const CLEARING = 44;          // the player stays inside this radius
 const KEEP_OUT = 1.6;         // and at least this far from each shape's center
 const WALK_SPEED = 5;         // units per second
@@ -21,6 +22,7 @@ const CLICK_SLOP = 6;         // CSS px of movement before a press stops being a
 const KEYS = {
   ArrowUp: 'fwd', KeyW: 'fwd', ArrowDown: 'back', KeyS: 'back',
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+  KeyZ: 'strafeL', KeyX: 'strafeR',
 };
 const SKY = { horizon: new THREE.Color('#c4e6ff'), zenith: new THREE.Color('#3d86e0') };
 const GREENS = ['#2f7d3a', '#3e9348', '#24612d'];
@@ -123,10 +125,18 @@ export class World {
 
   // Back to the start: nothing counted, the frame hidden, the player at the start.
   reset() {
-    this.pos.set(START.x, 0, START.z);
-    // Face halfway between the first and last shape, so the whole line is in view.
-    const ends = [0, SHAPES.length - 1].map((i) => this.models[i].model.position);
-    this.yaw = ends.reduce((sum, p) => sum + this.yawTo(p), 0) / 2;
+    if (this.touch) {
+      // Phones can't turn, so face halfway between the first and last shape to
+      // keep the whole line in view.
+      this.pos.set(END_VIEW.x, 0, END_VIEW.z);
+      const ends = [0, SHAPES.length - 1].map((i) => this.models[i].model.position);
+      this.yaw = ends.reduce((sum, p) => sum + this.yawTo(p), 0) / 2;
+    } else {
+      // Face the shapes on show square on, so they read left to right in order.
+      const mid = (this.models[0].model.position.z + this.models[LEVELS.length - 1].model.position.z) / 2;
+      this.pos.set(SIDE_VIEW, 0, mid);
+      this.yaw = this.yawTo(new THREE.Vector3(0, 0, mid));
+    }
     this.focusYaw = null;
     this.active = false;
     this.target = 0;
@@ -213,12 +223,14 @@ export class World {
     const k = this.keys;
     const turn = (k.has('left') ? 1 : 0) - (k.has('right') ? 1 : 0);
     const step = (k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0);
+    const side = (k.has('strafeR') ? 1 : 0) - (k.has('strafeL') ? 1 : 0);
     this.yaw += turn * TURN_SPEED * dt;
-    if (!step) return;
-    const d = step * WALK_SPEED * dt;
+    if (!step && !side) return;
+    const d = (WALK_SPEED * dt) / Math.hypot(step, side);
+    const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     const p = this.pos;
-    p.x -= Math.sin(this.yaw) * d;
-    p.z -= Math.cos(this.yaw) * d;
+    p.x += (-sin * step + cos * side) * d;
+    p.z += (-cos * step - sin * side) * d;
     this.walk += dt * 10;
     const r = Math.hypot(p.x, p.z);
     if (r > CLEARING) p.multiplyScalar(CLEARING / r);
