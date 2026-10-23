@@ -1,21 +1,21 @@
 import { Stage } from './scene.js';
 import { Hud, formulaString, COUNT_ROW, LINE_H, ledgerHeight } from './hud.js';
-import { drawBackdrop } from './backdrop.js';
+import { World } from './world.js';
 import { Game } from './game.js';
 import { selfTest, LEVELS } from './polyhedra.js';
 import { sfx } from './sfx.js';
 import { SHAPE_RES, HUD_RES } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
-const backdrop = $('backdrop');
 const stage = new Stage($('scene'));
+const world = new World(stage.renderer, $('scene'));
 const hud = new Hud($('hud'));
 
 const SIGN_ROW = 40; // CSS px: height of the sign buttons under the ledger
 const BTN_ROWS = 80; // CSS px: room for the button bar wrapped onto two rows
 
 // Low-res layout shared by every layer. PX is the size of one "fat pixel" in CSS
-// pixels; the HUD is drawn at 1/PX resolution. The 3D scene and backdrop use
+// pixels; the HUD is drawn at 1/PX resolution. The 3D world and stage use
 // their own, possibly coarser, grid in L.scene (see SHAPE_RES).
 function computeLayout() {
   const cw = window.innerWidth, ch = window.innerHeight;
@@ -128,8 +128,8 @@ for (let i = 0; i < 3; i++) {
 
 function resize() {
   const L = computeLayout();
-  drawBackdrop(backdrop, L);
   stage.resize(L);
+  world.resize(L);
   hud.resize(L);
   ui.layout(L);
 }
@@ -137,7 +137,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-const game = new Game({ stage, hud, ui });
+const game = new Game({ stage, hud, ui, world });
 window.__eulerSelfTest = selfTest;
 window.__game = game;
 
@@ -149,6 +149,8 @@ document.fonts.load('8px "Press Start 2P"').catch(() => {}).finally(() => {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     stage.update(dt);
+    world.update(dt);
+    world.render();
     stage.render();
     hud.draw(game, dt);
     requestAnimationFrame(frame);
