@@ -7,6 +7,11 @@ See README.md for what the game is and the file map. This file covers the things
 - There's no build step and no package.json. Three.js (`three@0.160.0`, via the import map in `index.html`) and the Press Start 2P font come from CDNs.
 - To check the shape data without a browser: `node -e "import('./js/polyhedra.js').then(m=>m.selfTest())"`.
 
+## Deploying
+- GitHub Pages serves `main` from the repo root at https://ubiquitousidea.github.io/eulergame/ (branch build, no Actions workflow). Pushing to `main` deploys it.
+- The site lives under `/eulergame/`, so paths in `index.html` and imports must stay relative (`js/main.js`, not `/js/main.js`).
+- Phones only send tilt data over HTTPS, so test on a phone through Pages, not `http://<LAN-IP>`. To preview a branch, point Pages at it with `gh api -X PUT repos/ubiquitousidea/eulergame/pages -f "source[branch]=<branch>" -f "source[path]=/"`. Changing the source doesn't start a build, so follow it with `gh api -X POST repos/ubiquitousidea/eulergame/pages/builds`. Point it back at `main` afterwards, because the live site is public.
+
 ## Coordinates and the pixel filter
 - Everything visual is drawn in low-res "fat pixel" units. `computeLayout()` in `js/main.js` builds the shared layout object `L` (`PX`, `W`, `H`, `stage`, `counts`, `ledger`, `narr`, `scene`). `stage.r` sets the shape size. `PX` changes with window size and browser zoom, from 1 up to 6 or more.
 - There are two pixel grids. The HUD uses `PX`, which is sized so the 8px font fits. The 3D world and counting stage use the coarser `L.scene` grid (`PX`, `W`, `H`, `x`, `y`, `r`). It is sized so the shape's radius is always about `SHAPE_RES` fat pixels, rounded to whole device pixels. That's why phones show chunky pixels even though their HUD `PX` is 1. The knobs live in `js/settings.js`. `stage.project()` and `pickAt()` still talk in HUD fat pixels and CSS px.
