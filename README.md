@@ -18,7 +18,7 @@ Three.js and the Press Start 2P font load from CDNs, so you need a network conne
 
 ## How it plays
 
-- **Explore.** You stand in a dirt clearing ringed by forest, and the solids float in a line ahead of you. Walk with the arrow keys (or WASD): up and down move, left and right turn. Walk up to the solid under the gold arrow and click it to study it. On phones, which can't walk, any solid in view can be tapped.
+- **Explore.** You stand in a dirt clearing ringed by forest, and the solids float in a row in front of you. Walk with the arrow keys (or WASD): up and down move, left and right turn, Z and X step sideways. Walk up to the solid under the gold arrow and click it to study it. On phones, which can't walk, any solid in view can be tapped.
 - **Count by clicking.** Each solid is counted in three passes: vertices, then edges, then faces. Each type has its own hue (cyan vertices, gold edges, pink faces), and clicking a piece lights it up and adds one to the count panel. You can't count a piece twice. Drag to rotate, because hidden pieces count too.
 - **Hunt for the rule.** Each solid adds a row to the ledger, and lights up in the world once counted. The sign buttons (`±V ±E ±F`) recompute the `=` column for every row at once. Once you have three or more solids, the only combination that stays constant is `V − E + F` (or its negation). Finding it unlocks the later levels.
 - **Guess first.** Before each count, you guess how many vertices, edges or faces there are, and the game tells you how close you were. For the dodecahedron and icosahedron, the face guess becomes a prediction made with your rule.

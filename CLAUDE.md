@@ -22,7 +22,7 @@ See README.md for what the game is and the file map. This file covers the things
 - The rule counts as discovered once the sign choices give the same result for at least 3 hole-free shapes. The torus row has `sphere: false` and is excluded. `GATE_LEVEL` (the octahedron) blocks progress until the rule is found.
 
 ## The world (js/world.js)
-- First-person tank controls: arrows/WASD. The player stays inside `CLEARING` and `KEEP_OUT` away from each shape. The start pose faces halfway between the first and last shape so the whole line fits even on a portrait phone.
+- First-person tank controls: arrows/WASD, plus Z/X to strafe. The player stays inside `CLEARING` and `KEEP_OUT` away from each shape. On keyboard devices the start pose is `SIDE_VIEW` out from the line, facing it square on, with shape 0 on the left. Touch devices can't move, so they start at `END_VIEW`, facing halfway between the first and last shape so the whole line fits even on a portrait phone.
 - Clicking a shape needs the player within `REACH`, except on `(pointer: coarse)` devices, which can't walk (`world.touch`). When the line overlaps itself on screen, a click that passes through the target picks it.
 - World shapes are plain models (one face mesh plus `LineSegments`). They use `HUES` `base` colors until counted and `lit` after.
 
