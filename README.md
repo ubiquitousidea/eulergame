@@ -12,6 +12,8 @@ There's no build step. Serve the folder and open it:
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
+If `python3` fails with a version-manager error (asdf or pyenv with no version set for this folder), use the system Python instead: `/usr/bin/python3 -m http.server 8000`.
+
 Three.js and the Press Start 2P font load from CDNs, so you need a network connection.
 
 ## How it plays
