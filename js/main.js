@@ -4,6 +4,7 @@ import { drawBackdrop } from './backdrop.js';
 import { Game } from './game.js';
 import { selfTest, LEVELS } from './polyhedra.js';
 import { sfx } from './sfx.js';
+import { SHAPE_RES, HUD_RES } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const backdrop = $('backdrop');
@@ -14,10 +15,11 @@ const SIGN_ROW = 40; // CSS px: height of the sign buttons under the ledger
 const BTN_ROWS = 80; // CSS px: room for the button bar wrapped onto two rows
 
 // Low-res layout shared by every layer. PX is the size of one "fat pixel" in CSS
-// pixels; everything except the DOM buttons is drawn at 1/PX resolution.
+// pixels; the HUD is drawn at 1/PX resolution. The 3D scene and backdrop use
+// their own, possibly coarser, grid in L.scene (see SHAPE_RES).
 function computeLayout() {
   const cw = window.innerWidth, ch = window.innerHeight;
-  const PX = Math.max(1, Math.round(Math.min(cw / 500, ch / 290)));
+  const PX = Math.max(1, Math.round(Math.min(cw / HUD_RES.w, ch / HUD_RES.h)));
   const W = Math.ceil(cw / PX), H = Math.ceil(ch / PX);
   // Narrow screens wrap the longest narration pages onto a fifth line.
   const nh = 12 + (W < 440 ? 5 : 4) * LINE_H;
@@ -42,7 +44,15 @@ function computeLayout() {
   }
   const r = Math.max(20, Math.min((bottom - top) / 2.3, (right - left) / 2.3));
   const stageBox = { x: Math.round((left + right) / 2), y: Math.round((top + bottom) / 2), r, w: right - left };
-  return { PX, W, H, narr, counts, ledger, stage: stageBox };
+  // Whole device pixels per scene pixel, never finer than the HUD grid.
+  const dpr = window.devicePixelRatio || 1;
+  const dev = Math.max(Math.round(PX * dpr), Math.round((r * PX * dpr) / SHAPE_RES));
+  const SPX = dev / dpr, s = PX / SPX;
+  const scene = {
+    PX: SPX, W: Math.ceil(cw / SPX), H: Math.ceil(ch / SPX),
+    x: stageBox.x * s, y: stageBox.y * s, r: r * s,
+  };
+  return { PX, W, H, narr, counts, ledger, stage: stageBox, scene };
 }
 
 const ui = {

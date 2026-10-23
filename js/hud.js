@@ -104,8 +104,11 @@ export class Hud {
     if (TYPES.includes(g.state)) {
       line = `COUNT ${LABEL[g.state]}: ${g.collected[g.state].size}`;
       col = TYPE_COL[g.state];
-    } else if (g.state === 'predict') line = 'PREDICT THE FACES';
-    else if (g.state === 'tally') line = 'TALLY';
+    } else if (g.state === 'guess') {
+      const predict = g.shape.predict && g.guessType === 'faces';
+      line = `${predict ? 'PREDICT' : 'GUESS'} THE ${LABEL[g.guessType]}`;
+      col = TYPE_COL[g.guessType];
+    } else if (g.state === 'tally') line = 'TALLY';
     else if (g.state === 'look') line = 'INSPECT';
     else if (g.state === 'reveal') line = 'DISCOVERY';
     this.txt(line, 8, 17, col);
@@ -126,10 +129,11 @@ export class Hud {
       const col = TYPE_COL[type];
       const ry = y + 18 + i * COUNT_ROW;
       this.bump[type] = Math.max(0, this.bump[type] - dt * 4);
-      const n = g.state === 'predict' && type === 'faces' ? '?' : String(g.collected[type].size);
+      const guessing = g.state === 'guess' && g.guessType === type;
+      const n = guessing ? '?' : String(g.collected[type].size);
       this.txt(LETTER[type], x + 6, ry + 6, col);
       this.txt(n, x + w - 5, Math.round(ry + 2 - this.bump[type] * 3), '#fff', 16, 'right');
-      if (g.state === type && blink) {
+      if ((g.state === type || guessing) && blink) {
         c.strokeStyle = col;
         c.strokeRect(x + 2.5, ry - 0.5, w - 5, COUNT_ROW - 1);
       }
@@ -172,8 +176,9 @@ export class Hud {
   drawStageText(g) {
     const { x, r } = this.L.stage;
     const top = Math.max(30, this.L.stage.y - r - 14);
-    if (g.state === 'predict') {
-      this.txt(`F = ${g.prediction} ?`, x, top, TYPE_COL.faces, 16, 'center');
+    if (g.state === 'guess') {
+      const type = g.guessType;
+      this.txt(`${LETTER[type]} = ${g.guesses[type]} ?`, x, top, TYPE_COL[type], 16, 'center');
     } else if (g.state === 'reveal' || (g.state === 'end' && g.showTitle)) {
       const big = g.state === 'end' ? 'V - E + F = 2 - 2g' : 'V - E + F = 2';
       const room = this.L.stage.w;

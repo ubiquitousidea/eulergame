@@ -59,17 +59,20 @@ export class Stage {
     canvas.addEventListener('pointerleave', () => this.setHover(null));
   }
 
+  // Renders on the scene grid (L.scene), but positions in and out of the stage
+  // are in HUD fat pixels.
   resize(L) {
     this.L = L;
-    this.renderer.setSize(L.W, L.H, false);
-    this.canvas.style.width = `${L.W * L.PX}px`;
-    this.canvas.style.height = `${L.H * L.PX}px`;
-    // Distance chosen so the unit-radius shape spans stage.r low-res pixels,
+    const S = L.scene;
+    this.renderer.setSize(S.W, S.H, false);
+    this.canvas.style.width = `${S.W * S.PX}px`;
+    this.canvas.style.height = `${S.H * S.PX}px`;
+    // Distance chosen so the unit-radius shape spans S.r low-res pixels,
     // and the view offset puts the origin at the stage center.
     const fov = THREE.MathUtils.degToRad(this.camera.fov);
-    this.camera.aspect = L.W / L.H;
-    this.camera.position.set(0, 0, L.H / 2 / (Math.tan(fov / 2) * L.stage.r));
-    this.camera.setViewOffset(L.W, L.H, L.W / 2 - L.stage.x, L.H / 2 - L.stage.y, L.W, L.H);
+    this.camera.aspect = S.W / S.H;
+    this.camera.position.set(0, 0, S.H / 2 / (Math.tan(fov / 2) * S.r));
+    this.camera.setViewOffset(S.W, S.H, S.W / 2 - S.x, S.H / 2 - S.y, S.W, S.H);
     this.camera.updateProjectionMatrix();
   }
 
@@ -169,19 +172,21 @@ export class Stage {
     this.pulseUntil = this.time + 1.8;
   }
 
-  // Low-res screen position of an element, for feedback drawn at the pick.
+  // Screen position of an element in HUD fat pixels, for feedback drawn at the pick.
   project(type, id) {
     const v = this.items[type][id].center.clone();
     this.spin.localToWorld(v);
     v.project(this.camera);
-    return { x: ((v.x + 1) / 2) * this.L.W, y: ((1 - v.y) / 2) * this.L.H };
+    const S = this.L.scene, k = S.PX / this.L.PX;
+    return { x: ((v.x + 1) / 2) * S.W * k, y: ((1 - v.y) / 2) * S.H * k };
   }
 
   pickAt(clientX, clientY) {
     if (!this.candidates.length) return null;
+    const S = this.L.scene;
     const ndc = new THREE.Vector2(
-      (clientX / this.L.PX / this.L.W) * 2 - 1,
-      -(clientY / this.L.PX / this.L.H) * 2 + 1,
+      (clientX / S.PX / S.W) * 2 - 1,
+      -(clientY / S.PX / S.H) * 2 + 1,
     );
     this.ray.setFromCamera(ndc, this.camera);
     const hit = this.ray.intersectObjects(this.candidates, false)[0];

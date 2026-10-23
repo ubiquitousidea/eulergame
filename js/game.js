@@ -5,6 +5,7 @@ import { sfx } from './sfx.js';
 const ORDER = ['vertices', 'edges', 'faces'];
 const SINGULAR = { vertices: 'vertex', edges: 'edge', faces: 'face' };
 const SHAPE_KEY = { vertices: 'verts', edges: 'edges', faces: 'faces' };
+const LETTER = { vertices: 'V', edges: 'E', faces: 'F' };
 const GATE_LEVEL = 4; // the octahedron: the rule must be found before predicting
 
 const INTRO = [
@@ -50,7 +51,7 @@ export class Game {
     this.signs = [1, 1, 1];
     this.discovered = false;
     this.epilogue = false;
-    this.prediction = null;
+    this.guesses = {};
     this.state = 'intro';
     this.stage.compact = false;
     this.shape = LEVELS[0];
@@ -85,14 +86,14 @@ export class Game {
     this.shape = shape;
     this.levelIndex = index;
     this.epilogue = shape === EPILOGUE;
-    this.prediction = null;
+    this.guesses = {};
     this.collected = { vertices: new Set(), edges: new Set(), faces: new Set() };
     this.state = 'look';
     this.stage.compact = false;
     this.stage.loadShape(shape);
     this.hud.resetCounts();
     this.ui.setFormula({ enabled: false });
-    this.narrate([shape.blurb], [{ label: 'Start counting >', onClick: () => this.startPhase('vertices') }]);
+    this.narrate([shape.blurb], [{ label: 'Start counting >', onClick: () => this.startGuess('vertices') }]);
   }
 
   startPhase(type, prefix = '') {
@@ -130,36 +131,43 @@ export class Game {
       return;
     }
     sfx.success();
-    const got = `${n} ${n === 1 ? SINGULAR[type] : type}! `;
-    if (type === 'vertices') this.startPhase('edges', got);
-    else if (type === 'edges' && this.shape.predict) this.startPredict();
-    else if (type === 'edges') this.startPhase('faces', got);
+    const guess = this.guesses[type];
+    const got = `${n} ${n === 1 ? SINGULAR[type] : type}! ${guess === n ? 'Spot on! ' : `You guessed ${guess}. `}`;
+    if (type === 'vertices') this.startGuess('edges', got);
+    else if (type === 'edges') this.startGuess('faces', got);
     else this.tally();
   }
 
-  startPredict() {
-    this.state = 'predict';
-    this.stage.compact = true; // room for the prediction above the shape
+  // Before each count the player guesses it; for predict shapes the face guess
+  // is a prediction from the rule.
+  startGuess(type, prefix = '') {
+    this.state = 'guess';
+    this.guessType = type;
+    this.stage.compact = true; // room for the guess above the shape
     this.stage.setPhase(null);
-    this.prediction = 10;
+    this.guesses[type] = 0;
     const V = this.shape.verts.length, E = this.shape.edges.length;
-    this.hud.say(`${V} vertices and ${E} edges. Before you count the faces, use your rule to PREDICT how many there are.`);
-    this.predictButtons();
+    this.hud.say(this.shape.predict && type === 'faces'
+      ? `${prefix}With V = ${V} and E = ${E}, use your rule to PREDICT the faces before you count them.`
+      : `${prefix}How many ${type.toUpperCase()} does the ${this.shape.name.toLowerCase()} have? Turn it to look, then guess.`);
+    this.guessButtons();
   }
 
-  predictButtons() {
+  guessButtons() {
+    const type = this.guessType;
     const step = (d) => () => {
-      this.prediction = Math.max(0, this.prediction + d);
+      this.guesses[type] = Math.max(0, this.guesses[type] + d);
       sfx.click();
-      this.predictButtons();
+      this.guessButtons();
     };
+    const n = this.guesses[type];
     this.ui.setButtons([
       { label: '-1', kind: 'ghost', onClick: step(-1) },
       { label: '+1', kind: 'ghost', onClick: step(1) },
       { label: '+5', kind: 'ghost', onClick: step(5) },
       {
-        label: `Lock in F = ${this.prediction}`,
-        onClick: () => this.startPhase('faces', `Locked in: ${this.prediction} faces. Now count them to check! `),
+        label: `Lock in ${LETTER[type]} = ${n}`,
+        onClick: () => this.startPhase(type, `Locked in: ${n} ${n === 1 ? SINGULAR[type] : type}. Now count them to check! `),
       },
     ]);
   }
@@ -169,7 +177,7 @@ export class Game {
     this.stage.setPhase(null);
     const s = this.shape;
     this.ledger.push({
-      short: s.short, name: s.name, sphere: s.sphere, predicted: this.prediction,
+      short: s.short, name: s.name, sphere: s.sphere, predict: s.predict, guessed: this.guesses.faces,
       V: s.verts.length, E: s.edges.length, F: s.faces.length,
     });
     this.ui.setFormula({ rows: this.ledger.length });
@@ -205,10 +213,12 @@ export class Game {
     const row = this.ledger[this.ledger.length - 1];
     const last = this.levelIndex === LEVELS.length - 1;
     let msg = '';
-    if (row.predicted != null) {
-      msg += row.predicted === row.F
-        ? `You predicted ${row.predicted} faces and counted ${row.F}. Exactly right! `
-        : `You predicted ${row.predicted} but counted ${row.F}. Check your rule against the ledger. `;
+    if (row.predict) {
+      msg += row.guessed === row.F
+        ? `You predicted ${row.guessed} faces and counted ${row.F}. Exactly right! `
+        : `You predicted ${row.guessed} but counted ${row.F}. Check your rule against the ledger. `;
+    } else {
+      msg += row.guessed === row.F ? `${row.F} faces, as you guessed! ` : `${row.F} faces (you guessed ${row.guessed}). `;
     }
     if (newlyDiscovered) {
       msg += this.constantValue() === 2
