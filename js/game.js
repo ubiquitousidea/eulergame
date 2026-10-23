@@ -62,7 +62,18 @@ export class Game {
     this.collected = { vertices: new Set(), edges: new Set(), faces: new Set() };
     this.hud.resetCounts();
     this.ui.setFormula({ visible: false, enabled: false, signs: this.signs, rows: 0 });
-    this.narrate(INTRO, [{ label: 'Begin >', onClick: () => this.explore(0) }]);
+    this.narrate(INTRO, [{ label: 'Begin >', onClick: () => this.begin() }]);
+  }
+
+  // Phones ask for tilt access here: iOS only prompts from inside a tap.
+  begin() {
+    if (this.starting) return;
+    this.starting = true;
+    const ready = this.world.touch ? this.world.tilt.request() : Promise.resolve(false);
+    ready.then(() => {
+      this.starting = false;
+      this.explore(0);
+    });
   }
 
   // Show pages one at a time; the last page gets the final buttons.
@@ -96,7 +107,9 @@ export class Game {
     this.world.explore(index);
     this.ui.setFormula({ enabled: false });
     const name = this.shape.name.toUpperCase();
-    const how = this.world.touch ? `Tap the ${name}` : `Walk with the ARROW KEYS to the ${name}, then click it`;
+    const { touch, tilt } = this.world;
+    const how = !touch ? `Walk with the ARROW KEYS to the ${name}, then click it`
+      : tilt.live ? `Tilt to walk and steer, then tap the ${name}` : `Tap the ${name}`;
     this.hud.say(this.epilogue
       ? `A strange new shape has appeared at the far end of the line. ${how}!`
       : `${how}. Look for the gold arrow.`);
