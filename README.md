@@ -18,7 +18,7 @@ Three.js and the Press Start 2P font load from CDNs, so you need a network conne
 
 ## How it plays
 
-- **Explore.** You stand in a dirt clearing ringed by forest, and the solids float in a row in front of you. Walk with the arrow keys (or WASD): up and down move, left and right turn, Z and X step sideways. Walk up to the solid under the gold arrow and click it to study it. On phones, tilt to walk: however you hold the phone when exploring starts counts as standing still, tipping the top away walks forward, tipping it back walks backward, and rolling it steers. Phones may also tap any solid in view from where they stand. Tilt needs HTTPS (or localhost), and iPhones ask for permission when you press Begin.
+- **Explore.** You stand in a dirt clearing ringed by forest, and the solids float in a row in front of you. Walk with the arrow keys (or WASD): up and down move, left and right turn, Z and X step sideways. Walk up to the solid under the gold arrow and click it to study it. On phones, tilt to walk: however you hold the phone when exploring starts counts as standing still, tipping the top away walks forward, tipping it back walks backward, and turning it left or right about its own upright axis steers. Walking and turning ease in and out rather than starting and stopping dead. Phones may also tap any solid in view from where they stand. Tilt needs HTTPS (or localhost), and iPhones ask for permission when you press Begin.
 - **Count by clicking.** Each solid is counted in three passes: vertices, then edges, then faces. Each type has its own hue (cyan vertices, gold edges, pink faces), and clicking a piece lights it up and adds one to the count panel. You can't count a piece twice. Drag to rotate, because hidden pieces count too.
 - **Hunt for the rule.** Each solid adds a row to the ledger, and lights up in the world once counted. The sign buttons (`±V ±E ±F`) recompute the `=` column for every row at once. Once you have three or more solids, the only combination that stays constant is `V − E + F` (or its negation). Finding it unlocks the later levels.
 - **Guess first.** Before each count, you guess how many vertices, edges or faces there are, and the game tells you how close you were. For the dodecahedron and icosahedron, the face guess becomes a prediction made with your rule.
@@ -34,7 +34,7 @@ Euler described the relation in a 1750 letter to Goldbach. Legendre gave the fir
 |---|---|
 | `js/polyhedra.js` | Shape data; a convex-hull face finder recovers true polygon faces from vertex lists; edges come from face loops; `selfTest()` checks every count |
 | `js/world.js` | The walkable first-person world: sky, clouds, forest, dithered dirt ground, the line of floating solids, arrow-key movement, and clicking a solid to study it |
-| `js/tilt.js` | Tilt-to-walk on phones: device orientation turned into forward/back and steering, zeroed to the pose held when exploring starts |
+| `js/tilt.js` | Tilt-to-walk on phones: device orientation turned into forward/back (pitch) and steering (twist about the screen-up axis), zeroed to the pose held when exploring starts |
 | `js/scene.js` | Three.js counting stage, drawn over the dimmed world: shaded faces, pickable vertices/edges/faces with per-type hues that light up when counted, drag-to-rotate with inertia, click picking with occlusion |
 | `js/hud.js` | Count panel, ledger, narration, and pop-up feedback, drawn on a canvas |
 | `js/game.js` | State machine, narration, formula discovery, guesses and predictions |
