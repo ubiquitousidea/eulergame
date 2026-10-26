@@ -17,7 +17,7 @@ const TURN_DEAD = 5;  // the same for turning, which is coarser in the hand
 const TURN_FULL = 30;
 const SMOOTH = 0.2;   // low-pass blend per reading
 const STEP_SIGN = 1;  // flip if forward and back come out reversed on a device
-const TURN_SIGN = 1;  // flip if left and right come out reversed
+const TURN_SIGN = -1; // flip if left and right come out reversed
 const WAIT_MS = 600;  // how long request() waits for a first reading
 
 const RAD = Math.PI / 180;
