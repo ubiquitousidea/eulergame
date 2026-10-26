@@ -18,6 +18,8 @@ const CLEARING = 44;          // the player stays inside this radius
 const KEEP_OUT = 1.6;         // and at least this far from each shape's center
 const WALK_SPEED = 5;         // units per second
 const TURN_SPEED = 2;         // radians per second
+const WALK_EASE = 0.25;       // seconds for walking speed to close ~63% of the gap to what the input asks
+const TURN_EASE = 0.18;       // the same for turning speed
 const REACH = 10;             // how close the player must be to click a shape
 const CLICK_SLOP = 6;         // CSS px of movement before a press stops being a click
 const KEYS = {
@@ -49,6 +51,8 @@ export class World {
     this.keys = new Set();
     this.pos = new THREE.Vector3();
     this.yaw = 0;
+    this.vel = { step: 0, side: 0 }; // units per second, in the player's own frame
+    this.spin = 0;                   // radians per second
     this.focusYaw = null;
     this.walk = 0;
     this.time = 0;
@@ -143,7 +147,7 @@ export class World {
     this.active = false;
     this.target = 0;
     this.epilogueShown = false;
-    this.keys.clear();
+    this.stop();
     this.models.forEach((m, i) => {
       m.model.visible = i < LEVELS.length;
       this.setCounted(i, false);
@@ -155,6 +159,7 @@ export class World {
     this.target = index;
     this.active = true;
     this.focusYaw = null;
+    this.stop();
     this.tilt.recenter(); // however the phone is held now is standing still
     this.models.forEach((m, i) => (m.model.visible = i < LEVELS.length || this.epilogueShown));
     this.canvas.style.cursor = 'default';
@@ -164,9 +169,15 @@ export class World {
   // copy while the counting stage shows it up close.
   enter(index) {
     this.active = false;
-    this.keys.clear();
+    this.stop();
     this.focusYaw = this.yawTo(this.models[index].model.position);
     this.models[index].model.visible = false;
+  }
+
+  // Drop held keys and come to rest at once.
+  stop() {
+    this.keys.clear();
+    this.vel.step = this.vel.side = this.spin = 0;
   }
 
   yawTo(p) {
@@ -229,16 +240,27 @@ export class World {
     const turn = clamp((k.has('left') ? 1 : 0) - (k.has('right') ? 1 : 0) + tilt.turn);
     const step = clamp((k.has('fwd') ? 1 : 0) - (k.has('back') ? 1 : 0) + tilt.step);
     const side = (k.has('strafeR') ? 1 : 0) - (k.has('strafeL') ? 1 : 0);
-    this.yaw += turn * TURN_SPEED * dt;
-    if (!step && !side) return;
     // Keys give full speed (diagonals included); a gentle tilt gives less.
-    const len = Math.hypot(step, side), pace = Math.min(1, len);
-    const d = (WALK_SPEED * dt * pace) / len;
+    const len = Math.hypot(step, side);
+    const scale = len ? (WALK_SPEED * Math.min(1, len)) / len : 0;
+    // The input sets a target speed, and the actual speed eases toward it, so
+    // on-off keys still start, stop and turn smoothly.
+    const ease = (v, target, tau) => {
+      const next = v + (target - v) * (1 - Math.exp(-dt / tau));
+      return !target && Math.abs(next) < 0.01 ? 0 : next;
+    };
+    const v = this.vel;
+    v.step = ease(v.step, step * scale, WALK_EASE);
+    v.side = ease(v.side, side * scale, WALK_EASE);
+    this.spin = ease(this.spin, turn * TURN_SPEED, TURN_EASE);
+    this.yaw += this.spin * dt;
+    const speed = Math.hypot(v.step, v.side);
+    if (!speed) return;
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
     const p = this.pos;
-    p.x += (-sin * step + cos * side) * d;
-    p.z += (-cos * step - sin * side) * d;
-    this.walk += dt * 10 * pace;
+    p.x += (-sin * v.step + cos * v.side) * dt;
+    p.z += (-cos * v.step - sin * v.side) * dt;
+    this.walk += dt * 10 * (speed / WALK_SPEED);
     const r = Math.hypot(p.x, p.z);
     if (r > CLEARING) p.multiplyScalar(CLEARING / r);
     for (const { model } of this.models) {

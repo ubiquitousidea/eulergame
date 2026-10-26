@@ -2,32 +2,37 @@ import * as THREE from 'three';
 
 // Tilt-to-walk for phones. The pose the phone is held in when exploring starts
 // counts as standing still. Tipping the top away walks forward, tipping it back
-// walks backward, and rolling it like a steering wheel turns.
+// walks backward, and turning it about its upright (screen-up) axis, like a
+// door on its hinge, turns.
 //
-// Rather than raw Euler angles (gamma flips near an upright phone), each reading
-// becomes the "up" direction in the phone's own frame. The rotation from the
-// zero pose's up to the current up splits into a pitch part (about screen-right)
-// and a roll part, whatever way the phone was held at the start.
+// Each reading becomes the phone's full orientation as a quaternion, in a frame
+// lined up with the screen (x right, y up, z out). The rotation from the zero
+// pose to the current one splits, in YXZ order, into a turn about the zero
+// pose's screen-up axis, then a pitch about screen-right, then a roll that is
+// ignored. YXZ only locks at 90 degrees of pitch, far past full speed.
 
-const DEAD = 4;      // degrees of wobble that do nothing
-const FULL = 20;     // degrees of tilt for full speed
-const SMOOTH = 0.2;  // low-pass blend per reading
-const STEP_SIGN = 1; // flip if forward and back come out reversed on a device
-const TURN_SIGN = 1; // flip if left and right come out reversed
-const WAIT_MS = 600; // how long request() waits for a first reading
+const DEAD = 4;       // degrees of pitch wobble that do nothing
+const FULL = 20;      // degrees of pitch for full speed
+const TURN_DEAD = 5;  // the same for turning, which is coarser in the hand
+const TURN_FULL = 30;
+const SMOOTH = 0.2;   // low-pass blend per reading
+const STEP_SIGN = 1;  // flip if forward and back come out reversed on a device
+const TURN_SIGN = 1;  // flip if left and right come out reversed
+const WAIT_MS = 600;  // how long request() waits for a first reading
 
 const RAD = Math.PI / 180;
-const X = new THREE.Vector3(1, 0, 0);
+const Z = new THREE.Vector3(0, 0, 1);
 
 export class Tilt {
   constructor() {
     this.live = false;  // readings are arriving
     this.listening = false;
-    this.g = null;      // smoothed up vector, screen-aligned device frame
-    this.g0 = null;     // up vector of the zero pose
-    this.w = new THREE.Vector3();
-    this.pitchAxis = new THREE.Vector3();
-    this.rollAxis = new THREE.Vector3();
+    this.q = null;      // smoothed orientation, screen frame to earth frame
+    this.q0 = null;     // orientation of the zero pose
+    this.euler = new THREE.Euler();
+    this.raw = new THREE.Quaternion();
+    this.screen = new THREE.Quaternion();
+    this.rel = new THREE.Quaternion();
     this.onReading = (e) => this.reading(e);
     const rotated = () => this.recenter(true);
     if (screen.orientation) screen.orientation.addEventListener('change', rotated);
@@ -62,39 +67,39 @@ export class Tilt {
   // Make the current pose the zero. After the screen rotates, the axes jump,
   // so the smoothing starts over too.
   recenter(rotated = false) {
-    if (rotated) this.g = null;
-    this.g0 = this.g ? this.g.clone() : null;
+    if (rotated) this.q = null;
+    this.q0 = this.q ? this.q.clone() : null;
   }
 
   reading(e) {
     if (e.beta === null || e.gamma === null) return;
     this.live = true;
-    const b = e.beta * RAD, c = e.gamma * RAD;
-    const x = -Math.cos(b) * Math.sin(c), y = Math.sin(b), z = Math.cos(b) * Math.cos(c);
-    // Turn the device frame into the screen's, so x is screen-right in landscape too.
+    // Device to earth (z up) is Rz(alpha) Rx(beta) Ry(gamma). Without alpha
+    // (no gyro) turning is lost but walking still works.
+    this.euler.set(e.beta * RAD, e.gamma * RAD, (e.alpha || 0) * RAD, 'ZXY');
+    this.raw.setFromEuler(this.euler);
+    // Turn the device frame into the screen's, so y is screen-up in landscape too.
     const a = ((screen.orientation ? screen.orientation.angle : window.orientation) || 0) * RAD;
-    const raw = new THREE.Vector3(
-      x * Math.cos(a) - y * Math.sin(a),
-      x * Math.sin(a) + y * Math.cos(a),
-      z,
-    );
-    if (this.g) this.g.lerp(raw, SMOOTH).normalize();
-    else this.g = raw;
-    if (!this.g0) this.g0 = this.g.clone();
+    this.raw.multiply(this.screen.setFromAxisAngle(Z, -a));
+    if (this.q) this.q.slerp(this.raw, SMOOTH);
+    else this.q = this.raw.clone();
+    if (!this.q0) this.q0 = this.q.clone();
   }
 
   // { step, turn }, each in [-1, 1].
   read() {
-    if (!this.g || !this.g0) return { step: 0, turn: 0 };
-    this.w.crossVectors(this.g0, this.g);
-    this.pitchAxis.copy(X).addScaledVector(this.g0, -X.dot(this.g0)).normalize();
-    this.rollAxis.crossVectors(this.g0, this.pitchAxis);
-    const pitch = Math.asin(THREE.MathUtils.clamp(this.w.dot(this.pitchAxis), -1, 1)) / RAD;
-    const roll = Math.asin(THREE.MathUtils.clamp(this.w.dot(this.rollAxis), -1, 1)) / RAD;
-    return { step: STEP_SIGN * speed(pitch), turn: TURN_SIGN * speed(roll) };
+    if (!this.q || !this.q0) return { step: 0, turn: 0 };
+    this.rel.copy(this.q0).invert().multiply(this.q);
+    this.euler.setFromQuaternion(this.rel, 'YXZ');
+    // Tipping the top away is a negative turn about screen-right. Turning left,
+    // counter-clockwise seen from above, is positive about screen-up.
+    return {
+      step: STEP_SIGN * speed(-this.euler.x / RAD, DEAD, FULL),
+      turn: TURN_SIGN * speed(this.euler.y / RAD, TURN_DEAD, TURN_FULL),
+    };
   }
 }
 
-function speed(deg) {
-  return Math.sign(deg) * THREE.MathUtils.clamp((Math.abs(deg) - DEAD) / (FULL - DEAD), 0, 1);
+function speed(deg, dead, full) {
+  return Math.sign(deg) * THREE.MathUtils.clamp((Math.abs(deg) - dead) / (full - dead), 0, 1);
 }
